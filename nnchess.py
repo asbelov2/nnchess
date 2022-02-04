@@ -11,7 +11,7 @@ import tensorflow.keras.utils as utils
 import tensorflow.keras.optimizers as optimizers
 import tensorflow.keras.callbacks as callbacks
 
-random.seed(1627)
+random.seed(64365437)
 
 def random_board(max_depth=200):
   board = chess.Board()
@@ -29,7 +29,7 @@ def random_board(max_depth=200):
 def stockfish(board, depth):
   with chess.engine.SimpleEngine.popen_uci('stockfish.exe') as sf:
     result = sf.analyse(board, chess.engine.Limit(depth=depth))
-    score = result['score'].white().score()
+    score = result['score'].white().score(mate_score=10000)
     return score
 
 squares_index = {
@@ -115,7 +115,8 @@ def build_model(conv_size, conv_depth):
   return models.Model(inputs=board3d, outputs=x)
 
 def get_dataset(name):
-  container = numpy.load(f'content/{name}.npz')
+  container = numpy.load(f'content/{name}.npz', allow_pickle=True)
+  print(container['v'])
   b, v = container['b'], container['v']
   v = numpy.asarray(v / abs(v).max() / 2 + 0.5, dtype=numpy.float32) # normalization (0 - 1)
   return b, v
@@ -123,7 +124,7 @@ def get_dataset(name):
 def minimax_eval(board):
   board3d = split_dims(board)
   board3d = numpy.expand_dims(board3d, 0)
-  return model.predict(board3d)[0][0]
+  return model(board3d)[0][0]
 
 
 def minimax(board, depth, alpha, beta, maximizing_player):
@@ -155,19 +156,19 @@ def minimax(board, depth, alpha, beta, maximizing_player):
 
 
 # this is the actual function that gets the move from the neural network
-# def get_ai_move(board, depth):
-#   max_move = None
-#   max_eval = -numpy.inf
+def get_ai_move(board, depth):
+  max_move = None
+  max_eval = -numpy.inf
 
-#   for move in board.legal_moves:
-#     board.push(move)
-#     eval = minimax(board, depth - 1, -numpy.inf, numpy.inf, False)
-#     board.pop()
-#     if eval > max_eval:
-#       max_eval = eval
-#       max_move = move
+  for move in board.legal_moves:
+    board.push(move)
+    eval = minimax(board, depth - 1, -numpy.inf, numpy.inf, False)
+    board.pop()
+    if eval > max_eval:
+      max_eval = eval
+      max_move = move
   
-#   return max_move
+  return max_move
 
 # model = build_model(32, 4)
 # utils.plot_model(model, to_file='model_plot.png', show_shapes=True, show_layer_names=False)
