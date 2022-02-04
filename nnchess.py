@@ -85,7 +85,7 @@ def create_dataset(name, dataset_size):
   while i < dataset_size:
     board = random_board()
     value = stockfish(board, 10)
-    b.append(board)
+    b.append(split_dims(board))
     v.append(value)
     if (i%10==0):
       t=millis()
@@ -93,4 +93,3 @@ def create_dataset(name, dataset_size):
     i+=1
   numpy.savez(f'content/{name}', b, v)
   
-create_dataset('ds1', 1000000)
