@@ -10,8 +10,9 @@ import tensorflow.keras.layers as layers
 import tensorflow.keras.utils as utils
 import tensorflow.keras.optimizers as optimizers
 import tensorflow.keras.callbacks as callbacks
+import tensorflowjs as tfjs
 
-random.seed(64365437)
+random.seed(765422)
 
 def random_board(max_depth=200):
   board = chess.Board()
@@ -105,11 +106,17 @@ def build_model(conv_size, conv_depth):
   board3d = layers.Input(shape=(14, 8, 8))
   
   # adding the convolutional layers
-  x = board3d
+  x = layers.Conv2D(filters=conv_size, kernel_size=3, padding='same', data_format='channels_first')(board3d)
   for _ in range(conv_depth):
-    x = layers.Conv2D(filters=conv_size, kernel_size=3, padding='same', activation='relu', data_format='channels_first')(x)
+    previous = x
+    x = layers.Conv2D(filters=conv_size, kernel_size=3, padding='same', data_format='channels_first')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation('relu')(x)
+    x = layers.Conv2D(filters=conv_size, kernel_size=3, padding='same', data_format='channels_first')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Add()([x, previous])
+    x = layers.Activation('relu')(x)
   x = layers.Flatten()(x)
-  x = layers.Dense(64, 'relu')(x)
   x = layers.Dense(1, 'sigmoid')(x)
 
   return models.Model(inputs=board3d, outputs=x)
@@ -170,27 +177,32 @@ def get_ai_move(board, depth):
   
   return max_move
 
-# model = build_model(32, 4)
-# utils.plot_model(model, to_file='model_plot.png', show_shapes=True, show_layer_names=False)
-# x_train, y_train = get_dataset('test')
-# model.compile(optimizer=optimizers.Adam(5e-4), loss='mean_squared_error')
-# model.summary()
-# model.fit(x_train, y_train,
-#           batch_size=2048,
-#           epochs=1000,
-#           verbose=1,
-#           validation_split=0.1,
-#           callbacks=[callbacks.ReduceLROnPlateau(monitor='loss', patience=10),
-#                      callbacks.EarlyStopping(monitor='loss', patience=15, min_delta=1e-4)])
-# model.save('model.h5')
+model = build_model(32, 4)
+utils.plot_model(model, to_file='model_plot.png', show_shapes=True, show_layer_names=False)
+model.compile(optimizer=optimizers.Adam(5e-4), loss='mean_squared_error')
+x_train, y_train = get_dataset('nn_3')
+model = models.load_model('model.h5')
+model.summary()
+model.fit(x_train, y_train,
+          batch_size=2048,
+          epochs=1000,
+          verbose=1,
+          validation_split=0.1,
+          callbacks=[callbacks.ReduceLROnPlateau(monitor='loss', patience=10),
+                     callbacks.EarlyStopping(monitor='loss', patience=15, min_delta=1e-5)])
+tfjs.converters.save_keras_model(model, 'tensoflowjs_model')
+model.save('model.h5')
 
 
-create_dataset('test', 1000)
+
+# create_dataset('test', 1000)
+
+
 # model = models.load_model('model.h5')
 # game = chess.pgn.Game()
 # game.headers["Event"] = "AI chess"
 # game.headers["Site"] = "Izhevsk"
-# game.headers["Date"] = "2022.02.04"
+# game.headers["Date"] = datetime.now()
 # game.headers["White"] = "nnchess"
 # game.headers["Black"] = "Stockfish 14.1"
 # game.headers["Result"] = ""
@@ -199,11 +211,11 @@ create_dataset('test', 1000)
 # board = chess.Board()
 # is_started = False
 # i=1
-
 # with chess.engine.SimpleEngine.popen_uci('stockfish.exe') as engine:
 #   while True:
 #     move = get_ai_move(board, 1)
 #     board.push(move)
+#     print(move)
 #     print(f'\n{board}')
 #     if(is_started == False):
 #       node = game.add_variation(move)
@@ -215,6 +227,7 @@ create_dataset('test', 1000)
 
 #     move = engine.analyse(board, chess.engine.Limit(time=1), info=chess.engine.INFO_PV)['pv'][0]
 #     board.push(move)
+#     print(move)
 #     print(f'\n{board}')
 #     node = node.add_main_variation(move)
 #     if board.is_game_over():
