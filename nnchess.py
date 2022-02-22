@@ -93,7 +93,7 @@ def create_dataset(name, dataset_size):
   millis()
   while i < dataset_size:
     board = random_board()
-    value = stockfish(board, 10)
+    value = stockfish(board, 0)
     b.append(split_dims(board))
     v.append(value)
     if (i%10==0):
@@ -195,7 +195,7 @@ model.save('model.h5')
 
 
 
-# create_dataset('test', 1000)
+# create_dataset('nn_4', 1000000)
 
 
 # model = models.load_model('model.h5')
